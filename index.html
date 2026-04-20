@@ -638,7 +638,9 @@ function closeDrawer(){
 // SHEETS
 window.closeSheet=function(id,e){
   if(e&&e.target!==document.getElementById(id))return;
-  document.getElementById(id).classList.remove('show');
+  const el=document.getElementById(id);
+  el.classList.remove('show');
+  if(document.activeElement&&el.contains(document.activeElement))document.activeElement.blur();
 };
 function openSheet(id){document.getElementById(id).classList.add('show');}
 
