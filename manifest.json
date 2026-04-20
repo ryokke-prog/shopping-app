@@ -1,0 +1,20 @@
+{
+  "name": "お買いもの",
+  "short_name": "お買いもの",
+  "description": "パートナーと共有できる買い物リスト",
+  "start_url": "/shopping-app/",
+  "scope": "/shopping-app/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "lang": "ja",
+  "icons": [
+    {
+      "src": "512-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

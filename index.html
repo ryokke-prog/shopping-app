@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="お買いもの">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" href="512-icon.png?v=2">
+  <link rel="apple-touch-icon" href="512-icon.png">
+  <title>お買いもの</title>
+  <style>
+    :root {
+      --bg:#ffffff; --bg2:#f5f5f5; --bg3:#e8e8e8;
+      --text:#1a1a1a; --text2:#666; --text3:#aaa;
+      --border:rgba(0,0,0,0.09); --border2:rgba(0,0,0,0.18);
+      --green:#3B6D11; --green-bg:#eaf3de;
+      --blue:#185FA5; --blue-bg:#e6f1fb;
+      --red:#A32D2D; --red-bg:#fcebeb;
+      --amber:#854F0B; --amber-bg:#FAEEDA;
+      --radius:14px;
+      --safe-bottom:env(safe-area-inset-bottom,0px);
+      --safe-top:env(safe-area-inset-top,0px);
+    }
+    @media(prefers-color-scheme:dark){
+      :root{
+        --bg:#1a1a1a; --bg2:#252525; --bg3:#333;
+        --text:#f0f0f0; --text2:#aaa; --text3:#666;
+        --border:rgba(255,255,255,0.09); --border2:rgba(255,255,255,0.2);
+        --green-bg:#1e3308; --blue-bg:#0a2340; --red-bg:#2d1010; --amber-bg:#2a1a04;
+      }
+    }
+    [data-theme="dark"]{--bg:#1a1a1a;--bg2:#252525;--bg3:#333;--text:#f0f0f0;--text2:#aaa;--text3:#666;--border:rgba(255,255,255,0.09);--border2:rgba(255,255,255,0.2);--green-bg:#1e3308;--blue-bg:#0a2340;--red-bg:#2d1010;--amber-bg:#2a1a04;}
+    [data-theme="light"]{--bg:#ffffff;--bg2:#f5f5f5;--bg3:#e8e8e8;--text:#1a1a1a;--text2:#666;--text3:#aaa;--border:rgba(0,0,0,0.09);--border2:rgba(0,0,0,0.18);--green-bg:#eaf3de;--blue-bg:#e6f1fb;--red-bg:#fcebeb;--amber-bg:#FAEEDA;}
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+    html,body{height:100%;overflow:hidden;}
+    html{max-width:100vw;overflow-x:hidden;}
+    body{
+      font-family:-apple-system,'Hiragino Sans',sans-serif;
+      background:var(--bg3);color:var(--text);
+      display:flex;justify-content:center;
+    }
+    #appShell{
+      width:100%;max-width:430px;
+      background:var(--bg);
+      display:flex;flex-direction:column;
+      height:100%;overflow:hidden;
+      position:relative;
+    }
+    input,textarea{font-size:16px!important;font-family:inherit;}
+
+    .screen{display:none;flex-direction:column;height:100%;width:100%;}
+    .screen.active{display:flex;}
+
+    /* LOADING */
+    #loadingScreen{justify-content:center;align-items:center;gap:14px;}
+    .loading-icon{font-size:44px;animation:spin 1.4s linear infinite;}
+    @keyframes spin{to{transform:rotate(360deg);}}
+    .loading-text{font-size:14px;color:var(--text2);}
+
+    /* SETUP */
+    #setupScreen{
+      justify-content:center;align-items:center;
+      padding:40px 28px calc(40px + var(--safe-bottom));
+      overflow-y:auto;
+    }
+    .setup-emoji{font-size:56px;margin-bottom:16px;}
+    .setup-title{font-size:26px;font-weight:700;letter-spacing:-.5px;margin-bottom:6px;}
+    .setup-sub{font-size:14px;color:var(--text2);margin-bottom:34px;text-align:center;line-height:1.6;}
+    .setup-card{width:100%;background:var(--bg2);border-radius:var(--radius);padding:18px;margin-bottom:12px;}
+    .setup-lbl{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:9px;letter-spacing:.5px;text-transform:uppercase;}
+    .setup-inp{
+      width:100%;height:46px;
+      background:var(--bg);border:1px solid var(--border2);
+      border-radius:10px;padding:0 14px;color:var(--text);outline:none;margin-bottom:10px;
+    }
+    .setup-inp:last-child{margin-bottom:0;}
+    .setup-inp:focus{border-color:var(--green);}
+    .sbtn{
+      width:100%;height:50px;border-radius:var(--radius);
+      border:none;font-size:16px;font-weight:600;
+      cursor:pointer;transition:transform .1s;margin-bottom:8px;
+    }
+    .sbtn:last-child{margin-bottom:0;}
+    .sbtn:active{transform:scale(.97);}
+    .sbtn-primary{background:var(--text);color:var(--bg);}
+    .sbtn-secondary{background:var(--bg);color:var(--text);border:1px solid var(--border2);}
+    .sbtn-danger{background:var(--red);color:#fff;}
+    .sbtn-green{background:var(--green);color:#fff;}
+    .setup-or{text-align:center;color:var(--text3);font-size:13px;margin:4px 0 12px;}
+
+    /* MAIN */
+    #mainScreen{overflow:hidden;}
+
+    /* HEADER */
+    .header{
+      padding:calc(var(--safe-top) + 12px) 16px 8px;
+      flex-shrink:0;
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .section-title{
+      font-size:22px;font-weight:700;letter-spacing:-.5px;
+      flex:1;min-width:0;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+      margin-right:10px;
+    }
+    .header-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+    .sync-badge{
+      display:flex;align-items:center;gap:4px;
+      padding:4px 9px;border-radius:20px;font-size:11px;font-weight:500;
+    }
+    .sync-badge.online {background:var(--green-bg);color:var(--green);}
+    .sync-badge.offline{background:var(--red-bg);color:var(--red);}
+    .sync-badge.syncing{background:var(--blue-bg);color:var(--blue);}
+    .sync-dot{width:5px;height:5px;border-radius:50%;}
+    .online  .sync-dot{background:var(--green);animation:blink 2s infinite;}
+    .offline .sync-dot{background:var(--red);}
+    .syncing .sync-dot{background:var(--blue);animation:blink .5s infinite;}
+    @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+    .burger-btn{
+      width:30px;height:30px;border-radius:50%;
+      background:var(--bg2);border:1px solid var(--border);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3.5px;
+      cursor:pointer;flex-shrink:0;
+    }
+    .burger-btn:active{background:var(--bg3);}
+    .burger-line{width:13px;height:1.5px;background:var(--text2);border-radius:1px;}
+
+    /* ADD BAR */
+    .add-bar{
+      padding:8px 12px 10px;
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;display:flex;flex-direction:column;gap:7px;
+    }
+    .add-row1{display:flex;gap:6px;}
+    .add-name{
+      flex:1;height:40px;
+      background:var(--bg2);border:1px solid var(--border);
+      border-radius:11px;padding:0 12px;color:var(--text);outline:none;
+    }
+    .add-name:focus{border-color:var(--border2);background:var(--bg);}
+    .add-qty{
+      width:58px;height:40px;text-align:center;
+      background:var(--bg2);border:1px solid var(--border);
+      border-radius:11px;padding:0 8px;color:var(--text);outline:none;
+    }
+    .add-qty:focus{border-color:var(--border2);background:var(--bg);}
+    .add-row2{display:flex;gap:6px;}
+    .add-memo{
+      flex:1;height:36px;
+      background:var(--bg2);border:1px solid var(--border);
+      border-radius:9px;padding:0 12px;color:var(--text2);outline:none;
+    }
+    .add-memo:focus{border-color:var(--border2);background:var(--bg);color:var(--text);}
+    .add-memo::placeholder{color:var(--text3);}
+    .add-btn{
+      height:36px;padding:0 18px;
+      background:var(--green);color:#fff;
+      border:none;border-radius:9px;
+      font-size:14px;font-weight:600;font-family:inherit;
+      cursor:pointer;white-space:nowrap;flex-shrink:0;
+      transition:transform .1s,opacity .1s;
+    }
+    .add-btn:active{transform:scale(.96);opacity:.85;}
+
+    /* TABS */
+    .tabs-bar{
+      display:flex;align-items:center;
+      padding:8px 12px 8px;
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;gap:5px;
+      overflow-x:auto;scrollbar-width:none;
+    }
+    .tabs-bar::-webkit-scrollbar{display:none;}
+    .tab{
+      flex-shrink:0;padding:5px 12px;border-radius:20px;
+      font-size:13px;font-weight:500;
+      border:1px solid var(--border2);
+      background:transparent;color:var(--text2);
+      cursor:pointer;white-space:nowrap;
+      max-width:110px;overflow:hidden;text-overflow:ellipsis;
+      transition:all .15s;
+    }
+    .tab.active{background:var(--text);color:var(--bg);border-color:transparent;}
+    .tab-add{
+      flex-shrink:0;width:24px;height:24px;border-radius:50%;
+      border:1px solid var(--border2);background:var(--bg2);
+      display:flex;align-items:center;justify-content:center;
+      cursor:pointer;margin-left:2px;
+    }
+    .tab-add:active{background:var(--bg3);}
+
+    /* LIST */
+    .list-wrap{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+    .prog-wrap{padding:10px 16px 4px;}
+    .prog-label{font-size:11px;color:var(--text3);margin-bottom:5px;}
+    .prog-track{height:2px;background:var(--border);border-radius:2px;overflow:hidden;}
+    .prog-fill{height:100%;background:var(--green);border-radius:2px;transition:width .35s;}
+    .sec-row{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 4px;}
+    .sec-lbl{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;}
+    .buy-btn{
+      height:26px;padding:0 12px;
+      background:var(--text);color:var(--bg);
+      border:none;border-radius:20px;
+      font-size:12px;font-weight:600;cursor:pointer;
+      transition:transform .1s,opacity .1s;
+    }
+    .buy-btn:active{transform:scale(.94);opacity:.8;}
+
+    /* ITEM */
+    .item{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;user-select:none;}
+    .item+.item{border-top:1px solid var(--border);}
+    .item.in-cart{opacity:.68;}
+    .check-wrap{flex-shrink:0;padding-top:1px;cursor:pointer;}
+    .check{
+      width:24px;height:24px;border-radius:50%;
+      border:1.5px solid var(--border2);
+      display:flex;align-items:center;justify-content:center;
+      transition:all .18s;
+    }
+    .check svg{opacity:0;transition:opacity .15s;}
+    .in-cart .check{background:var(--green-bg);border-color:var(--green);}
+    .in-cart .check svg{opacity:1;}
+    .item-body{flex:1;min-width:0;}
+    .item-name{font-size:15px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .in-cart .item-name{text-decoration:line-through;color:var(--text3);font-weight:400;}
+    .item-sub{display:flex;gap:8px;margin-top:3px;flex-wrap:wrap;align-items:center;}
+    .item-qty {font-size:12px;color:var(--text2);}
+    .item-memo{font-size:12px;color:var(--text3);font-style:italic;}
+    .item-by  {font-size:11px;color:var(--text3);margin-top:2px;}
+    .item-right{display:flex;align-items:center;gap:7px;flex-shrink:0;padding-top:1px;}
+    .avatar{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;}
+    .av-me     {background:var(--blue-bg);color:var(--blue);}
+    .av-partner{background:var(--green-bg);color:var(--green);}
+    .del-btn{
+      width:28px;height:28px;border-radius:50%;
+      background:var(--bg3);border:none;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;
+      color:var(--text2);flex-shrink:0;
+    }
+    .del-btn:active{background:var(--red-bg);color:var(--red);}
+    .empty{text-align:center;padding:60px 20px;color:var(--text3);font-size:15px;line-height:1.7;}
+    .empty-icon{font-size:36px;margin-bottom:10px;}
+
+    /* DRAG HANDLE */
+    .drag-handle{
+      flex-shrink:0;width:20px;display:flex;align-items:center;justify-content:center;
+      color:var(--text3);font-size:16px;cursor:grab;touch-action:none;
+      padding-top:1px;user-select:none;
+    }
+    .drag-handle:active{cursor:grabbing;}
+    .in-cart .drag-handle{display:none;}
+    .section-list{display:block;}
+    .sortable-ghost{opacity:.4;}
+    .sortable-drag{opacity:.9;}
+
+    /* TOAST */
+    .toast{
+      position:absolute;bottom:calc(70px + var(--safe-bottom));left:50%;
+      transform:translateX(-50%) translateY(16px);
+      background:var(--text);color:var(--bg);
+      padding:10px 20px;border-radius:20px;
+      font-size:14px;opacity:0;transition:all .22s;
+      pointer-events:none;white-space:nowrap;z-index:400;
+    }
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+    /* DRAWER (hamburger) */
+    .drawer-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,0.4);
+      z-index:300;opacity:0;pointer-events:none;transition:opacity .22s;
+    }
+    .drawer-overlay.show{opacity:1;pointer-events:all;}
+    .drawer{
+      position:fixed;top:0;right:0;bottom:0;width:min(220px,80vw);
+      background:var(--bg);
+      padding:calc(var(--safe-top) + 50px) 24px calc(24px + var(--safe-bottom));
+      display:flex;flex-direction:column;
+      transform:translateX(100%);transition:transform .26s cubic-bezier(.32,1,.35,1);
+    }
+    .drawer-overlay.show .drawer{transform:translateX(0);}
+    .drawer-section-lbl{font-size:11px;font-weight:600;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;}
+    .drawer-code-box{background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:20px;cursor:pointer;}
+    .drawer-code{font-family:monospace;font-size:20px;font-weight:700;color:var(--text);letter-spacing:2px;}
+    .drawer-code-hint{font-size:11px;color:var(--text3);margin-top:3px;}
+    .drawer-row{
+      padding:14px 0;border-bottom:1px solid var(--border);
+      font-size:15px;color:var(--text);
+      display:flex;align-items:center;gap:10px;cursor:pointer;
+    }
+    .drawer-row:active{opacity:.6;}
+    .drawer-row.danger{color:var(--red);}
+    .drawer-row svg{flex-shrink:0;}
+    .toggle-row{padding:13px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+    .toggle-label{font-size:15px;color:var(--text);}
+    .toggle{width:44px;height:26px;border-radius:13px;background:var(--bg3);border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0;}
+    .toggle.on{background:var(--green);}
+    .toggle-knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:left .2s;}
+    .toggle.on .toggle-knob{left:21px;}
+    .drawer-sub-lbl{font-size:11px;color:var(--text3);margin:14px 0 8px;}
+    .tag-manage-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+    .tag-manage-item{display:flex;align-items:center;gap:4px;padding:4px 8px;border-radius:20px;background:var(--amber-bg);color:var(--amber);font-size:12px;font-weight:500;}
+    .tag-del-btn{background:none;border:none;cursor:pointer;color:var(--amber);font-size:15px;line-height:1;padding:0 2px;}
+    .tag-add-row{display:flex;gap:6px;}
+    .tag-inp{flex:1;min-width:0;height:34px;background:var(--bg2);border:1px solid var(--border2);border-radius:8px;padding:0 10px;color:var(--text);outline:none;}
+    .tag-inp:focus{border-color:var(--green);}
+    .tag-add-btn{height:34px;padding:0 12px;background:var(--green);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:inherit;}
+    .qty-stepper{display:flex;align-items:center;border:1px solid var(--border);border-radius:11px;overflow:hidden;height:40px;flex-shrink:0;}
+    .qty-step-btn{width:34px;height:100%;background:var(--bg2);border:none;cursor:pointer;font-size:18px;color:var(--text2);display:flex;align-items:center;justify-content:center;}
+    .qty-step-btn:active{background:var(--bg3);}
+    .qty-num{width:38px;height:100%;text-align:center;background:var(--bg2);border:none;border-left:1px solid var(--border);border-right:1px solid var(--border);color:var(--text);outline:none;font-size:15px;}
+    .store-filter{display:flex;align-items:center;gap:5px;padding:6px 12px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--border);flex-shrink:0;}
+    .store-filter::-webkit-scrollbar{display:none;}
+    .store-pill{flex-shrink:0;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;white-space:nowrap;font-family:inherit;}
+    .store-pill.active{background:var(--amber-bg);color:var(--amber);border-color:var(--amber);}
+    .store-pill-all.active{background:var(--text);color:var(--bg);border-color:transparent;}
+    .sheet-lbl{font-size:12px;color:var(--text2);margin-bottom:6px;}
+    .tag-select-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+    .tag-opt{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text2);font-size:13px;cursor:pointer;font-family:inherit;}
+    .tag-opt.selected{background:var(--amber-bg);color:var(--amber);border-color:var(--amber);}
+    .tag-opt-none{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;font-family:inherit;}
+    .tag-opt-none.selected{background:var(--bg2);color:var(--text);border-color:var(--border2);}
+    .item-tag{font-size:11px;padding:1px 7px;border-radius:20px;background:var(--amber-bg);color:var(--amber);font-weight:500;}
+    .uncheck-btn{height:26px;padding:0 10px;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;}
+    .sec-actions{display:flex;gap:6px;align-items:center;}
+
+    /* BOTTOM SHEET */
+    .sheet-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,0.4);
+      display:flex;align-items:flex-end;justify-content:center;
+      z-index:350;opacity:0;pointer-events:none;transition:opacity .22s;
+    }
+    .sheet-overlay.show{opacity:1;pointer-events:all;}
+    .sheet{
+      background:var(--bg);border-radius:22px 22px 0 0;
+      padding:24px 24px calc(24px + var(--safe-bottom));
+      width:100%;max-width:430px;
+      transform:translateY(100%);transition:transform .26s cubic-bezier(.32,1,.35,1);
+    }
+    .sheet-overlay.show .sheet{transform:translateY(0);}
+    .sheet-title{font-size:17px;font-weight:700;margin-bottom:6px;}
+    .sheet-sub  {font-size:14px;color:var(--text2);margin-bottom:16px;line-height:1.5;}
+    .sheet-inp{
+      width:100%;height:46px;
+      background:var(--bg2);border:1px solid var(--border2);
+      border-radius:10px;padding:0 14px;
+      color:var(--text);outline:none;margin-bottom:14px;
+    }
+    .sheet-inp:focus{border-color:var(--green);}
+    .sheet-select{width:100%;height:44px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:0 12px;color:var(--text);outline:none;font-size:15px;font-family:inherit;margin-bottom:12px;cursor:pointer;}
+    .sheet-select:focus{border-color:var(--green);}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+</head>
+<body>
+<div id="appShell">
+
+<!-- LOADING -->
+<div class="screen active" id="loadingScreen">
+  <div class="loading-icon">🛒</div>
+  <div class="loading-text">読み込み中...</div>
+</div>
+
+<!-- SETUP -->
+<div class="screen" id="setupScreen">
+  <div class="setup-emoji">🛒</div>
+  <div class="setup-title">お買いもの</div>
+  <div class="setup-sub">パートナーと買い物リストを<br>リアルタイムで共有しよう</div>
+  <div class="setup-card">
+    <div class="setup-lbl">あなたの名前</div>
+    <input class="setup-inp" id="myName" placeholder="例：あゆみ" maxlength="10">
+  </div>
+  <div class="setup-card">
+    <div class="setup-lbl">新しいリストを作る</div>
+    <button class="sbtn sbtn-primary" onclick="createRoom()">新しいリストを作成</button>
+  </div>
+  <div class="setup-or">または</div>
+  <div class="setup-card">
+    <div class="setup-lbl">パートナーのリストに参加する</div>
+    <input class="setup-inp" id="joinCode" placeholder="共有コード（例：ABCD）" maxlength="6"
+      style="text-transform:uppercase;letter-spacing:3px;font-family:monospace;text-align:center;"
+      autocomplete="off" autocorrect="off" autocapitalize="characters" spellcheck="false"
+      onkeydown="event.key==='Enter'&&event.preventDefault()">
+    <button class="sbtn sbtn-secondary" onclick="joinRoom()">参加する →</button>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="screen" id="mainScreen">
+  <div class="header">
+    <div class="section-title" id="sectionTitle">お買いもの</div>
+    <div class="header-right">
+      <div class="sync-badge online" id="syncBadge">
+        <div class="sync-dot"></div>
+        <span id="syncLabel">同期中</span>
+      </div>
+      <div class="burger-btn" onclick="openDrawer()">
+        <div class="burger-line"></div>
+        <div class="burger-line"></div>
+        <div class="burger-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="add-bar">
+    <div class="add-row1">
+      <input class="add-name" id="addInput" placeholder="追加するものを入力..." onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter')addItem()">
+      <div class="qty-stepper">
+        <button class="qty-step-btn" onclick="stepQty(-1)">−</button>
+        <input class="qty-num" id="addQty" type="number" value="1" min="1">
+        <button class="qty-step-btn" onclick="stepQty(1)">＋</button>
+      </div>
+    </div>
+    <div class="add-row2">
+      <input class="add-memo" id="addMemo" placeholder="メモ（サイズ、ブランドなど）">
+      <button class="add-btn" onclick="addItem()">追加</button>
+    </div>
+  </div>
+
+  <div class="store-filter" id="storeFilter" style="display:none;"></div>
+  <div class="tabs-bar" id="tabsBar"></div>
+  <div class="list-wrap" id="listWrap"></div>
+</div>
+
+<!-- DRAWER -->
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawerOnBg(event)">
+  <div class="drawer" style="overflow-y:auto;overflow-x:hidden;">
+    <div class="drawer-section-lbl">共有コード</div>
+    <div class="drawer-code-box" onclick="copyCode()">
+      <div class="drawer-code" id="drawerCode">----</div>
+      <div class="drawer-code-hint">タップでコピー</div>
+    </div>
+    <div class="toggle-row">
+      <span class="toggle-label">ダークモード</span>
+      <button class="toggle" id="darkToggle" onclick="toggleDark()"><div class="toggle-knob"></div></button>
+    </div>
+    <div class="drawer-sub-lbl">店舗タグ</div>
+    <div class="tag-manage-list" id="tagManageList"><span style="font-size:12px;color:var(--text3);">タグはまだありません</span></div>
+    <div class="tag-add-row">
+      <input class="tag-inp" id="tagNameInp" placeholder="例：スーパー" maxlength="10"
+        onkeydown="event.key==='Enter'&&event.preventDefault()">
+      <button class="tag-add-btn" onclick="addStoreTag()">追加</button>
+    </div>
+    <div class="drawer-row danger" style="margin-top:auto;" onclick="logout()">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <path d="M6 2H3a1 1 0 00-1 1v10a1 1 0 001 1h3M11 11l3-3-3-3M14 8H6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      このリストから退出
+    </div>
+  </div>
+</div>
+
+<!-- SHEET: 購入確認 -->
+<div class="sheet-overlay" id="buySheet" onclick="closeSheet('buySheet',event)">
+  <div class="sheet">
+    <div class="sheet-title">購入を完了する</div>
+    <div class="sheet-sub" id="buySheetSub"></div>
+    <button class="sbtn sbtn-danger" style="margin-bottom:10px" onclick="confirmBuy()">購入済みとして削除</button>
+    <button class="sbtn sbtn-secondary" onclick="closeSheet('buySheet')">キャンセル</button>
+  </div>
+</div>
+
+<!-- SHEET: メモ編集 -->
+<div class="sheet-overlay" id="memoSheet" onclick="closeSheet('memoSheet',event)">
+  <div class="sheet">
+    <div class="sheet-title">アイテムを編集</div>
+    <div class="sheet-sub">長押ししたアイテムの内容を変更できます</div>
+    <input class="sheet-inp" id="editNameInput" placeholder="アイテム名">
+    <div class="sheet-lbl">個数</div>
+    <div class="qty-stepper" style="margin-bottom:12px;">
+      <button class="qty-step-btn" onclick="stepEditQty(-1)">−</button>
+      <input class="qty-num" id="editQtyInput" type="number" value="1" min="1">
+      <button class="qty-step-btn" onclick="stepEditQty(1)">＋</button>
+    </div>
+    <input class="sheet-inp" id="memoEditInput" placeholder="メモ（サイズ、ブランドなど）"
+      onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter')saveMemo()">
+    <div class="sheet-lbl">店舗タグ</div>
+    <div class="tag-select-wrap" id="editTagSelect"></div>
+    <div class="sheet-lbl" id="editSectionLbl">移動先セクション</div>
+    <select class="sheet-select" id="editSectionSelect"></select>
+    <button class="sbtn sbtn-green" style="margin-bottom:10px" onclick="saveMemo()">完了</button>
+    <button class="sbtn sbtn-secondary" onclick="closeSheet('memoSheet')">キャンセル</button>
+  </div>
+</div>
+
+<!-- SHEET: 新しいセクション -->
+<div class="sheet-overlay" id="newSectionSheet" onclick="closeSheet('newSectionSheet',event)">
+  <div class="sheet">
+    <div class="sheet-title">新しいセクションを追加</div>
+    <div class="sheet-sub">例：すぐに欲しいもの、見つけたら欲しいもの</div>
+    <input class="sheet-inp" id="newSectionInput" placeholder="セクション名" maxlength="20"
+      onkeydown="if(event.key==='Enter')confirmNewSection()">
+    <button class="sbtn sbtn-green" style="margin-bottom:10px" onclick="confirmNewSection()">追加</button>
+    <button class="sbtn sbtn-secondary" onclick="closeSheet('newSectionSheet')">キャンセル</button>
+  </div>
+</div>
+
+<!-- SHEET: セクション編集 -->
+<div class="sheet-overlay" id="editSectionSheet" onclick="closeSheet('editSectionSheet',event)">
+  <div class="sheet">
+    <div class="sheet-title">セクションを編集</div>
+    <div class="sheet-sub">名前の変更または削除ができます</div>
+    <input class="sheet-inp" id="editSectionInput" placeholder="セクション名" maxlength="20"
+      onkeydown="if(event.key==='Enter')confirmEditSection()">
+    <button class="sbtn sbtn-green" style="margin-bottom:10px" onclick="confirmEditSection()">名前を変更</button>
+    <button class="sbtn sbtn-danger" style="margin-bottom:10px" onclick="confirmDeleteSection()">このセクションを削除</button>
+    <button class="sbtn sbtn-secondary" onclick="closeSheet('editSectionSheet')">キャンセル</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, onValue, push, remove, set, off, update }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAxx51_JwC4D25aaOpXcQuNKTtcrb_w3gI",
+  authDomain: "shopping-app-1f65f.firebaseapp.com",
+  databaseURL: "https://shopping-app-1f65f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "shopping-app-1f65f",
+  storageBucket: "shopping-app-1f65f.firebasestorage.app",
+  messagingSenderId: "2534057758",
+  appId: "1:2534057758:web:ee969c105c696b628f8b0f"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+let myName='', roomId='';
+let items={}, sections={}, storeTags={};
+let activeSectionId=null, activeTagFilter=null;
+let dbItemsRef=null, dbSecRef=null, dbTagsRef=null;
+let editingItemKey=null, editingSectionKey=null, editingTagId=null, editingSectionId=null;
+const SESSION='shopping_session_v9';
+const DEFAULT_SECTION='リスト';
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function truncate(s, n){
+  return s.length > n ? s.slice(0, n) + '...' : s;
+}
+function genId(){
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:4},()=>c[Math.floor(Math.random()*c.length)]).join('');
+}
+// dark mode
+function applyTheme(){
+  const saved=localStorage.getItem('theme');
+  const sysDark=window.matchMedia('(prefers-color-scheme:dark)').matches;
+  const dark=saved==='dark'||(saved===null&&sysDark);
+  document.documentElement.setAttribute('data-theme',dark?'dark':'light');
+  const btn=document.getElementById('darkToggle');
+  if(btn)btn.classList.toggle('on',dark);
+}
+window.toggleDark=function(){
+  const cur=document.documentElement.getAttribute('data-theme');
+  localStorage.setItem('theme',cur==='dark'?'light':'dark');
+  applyTheme();
+};
+applyTheme();
+// qty steppers
+window.stepQty=function(d){const el=document.getElementById('addQty');el.value=Math.max(1,(parseInt(el.value)||1)+d);};
+window.stepEditQty=function(d){const el=document.getElementById('editQtyInput');el.value=Math.max(1,(parseInt(el.value)||1)+d);};
+function showToast(msg,dur=2600){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function setSyncStatus(s){
+  const b=document.getElementById('syncBadge');
+  b.className='sync-badge '+s;
+  document.getElementById('syncLabel').textContent=
+    {online:'同期中',offline:'オフライン',syncing:'更新中...'}[s]??'同期中';
+}
+
+// DRAWER
+window.openDrawer=function(){
+  document.getElementById('drawerOverlay').classList.add('show');
+  applyTheme();
+  renderTagManage();
+};
+window.closeDrawerOnBg=function(e){
+  if(e.target===document.getElementById('drawerOverlay'))
+    document.getElementById('drawerOverlay').classList.remove('show');
+};
+function closeDrawer(){
+  document.getElementById('drawerOverlay').classList.remove('show');
+}
+
+// SHEETS
+window.closeSheet=function(id,e){
+  if(e&&e.target!==document.getElementById(id))return;
+  document.getElementById(id).classList.remove('show');
+};
+function openSheet(id){document.getElementById(id).classList.add('show');}
+
+// ROOM
+window.createRoom=function(){
+  const name=document.getElementById('myName').value.trim();
+  if(!name){showToast('名前を入力してください');return;}
+  const id=genId();
+  enterRoom(name,id,true);
+  setTimeout(()=>showToast(`コード「${id}」をパートナーに送ってね！`,4000),300);
+};
+window.joinRoom=function(){
+  const name=document.getElementById('myName').value.trim();
+  const code=document.getElementById('joinCode').value.trim().toUpperCase();
+  if(!name){showToast('名前を入力してください');return;}
+  if(code.length<3){showToast('共有コードを入力してください');return;}
+  enterRoom(name,code,false);
+  setTimeout(()=>showToast(`「${code}」のリストに参加しました！`),300);
+};
+function enterRoom(name,id,isNew){
+  myName=name;roomId=id;
+  localStorage.setItem(SESSION,JSON.stringify({myName,roomId}));
+  document.getElementById('drawerCode').textContent=roomId;
+  showScreen('mainScreen');
+  startListening(isNew);
+}
+window.logout=function(){
+  closeDrawer();
+  setTimeout(()=>{
+    if(!confirm('このリストから退出しますか？'))return;
+    stopListening();
+    localStorage.removeItem(SESSION);
+    myName='';roomId='';items={};sections={};storeTags={};activeSectionId=null;activeTagFilter=null;
+    document.getElementById('myName').value='';
+    document.getElementById('joinCode').value='';
+    showScreen('setupScreen');
+  },200);
+};
+window.copyCode=function(){
+  navigator.clipboard.writeText(roomId)
+    .then(()=>showToast(`「${roomId}」をコピーしました！`))
+    .catch(()=>showToast(`共有コード：${roomId}`));
+};
+
+// FIREBASE
+function startListening(isNew){
+  stopListening();
+  setSyncStatus('syncing');
+  let isNewRoom=isNew;
+
+  dbSecRef=ref(db,`rooms/${roomId}/sections`);
+  onValue(dbSecRef,snap=>{
+    const data=snap.val()||{};
+    if(isNewRoom&&Object.keys(data).length===0){
+      push(ref(db,`rooms/${roomId}/sections`),{name:DEFAULT_SECTION,order:0,ts:Date.now()});
+      isNewRoom=false;
+      return;
+    }
+    sections=data;
+    const keys=sortedSectionKeys();
+    if(!activeSectionId||!sections[activeSectionId]){
+      activeSectionId=keys[0]??null;
+    }
+    updateSectionTitle();
+    renderTabs();
+    render();
+  });
+
+  dbItemsRef=ref(db,`rooms/${roomId}/items`);
+  onValue(dbItemsRef,snap=>{
+    items=snap.val()||{};
+    setSyncStatus('online');
+    render();
+  },()=>{
+    setSyncStatus('offline');
+    showToast('接続エラー。Wi-Fiを確認してください。');
+  });
+
+  dbTagsRef=ref(db,`rooms/${roomId}/storeTags`);
+  onValue(dbTagsRef,snap=>{
+    storeTags=snap.val()||{};
+    renderStoreFilter();
+    renderTagManage();
+  });
+}
+function stopListening(){
+  if(dbItemsRef){off(dbItemsRef);dbItemsRef=null;}
+  if(dbSecRef){off(dbSecRef);dbSecRef=null;}
+  if(dbTagsRef){off(dbTagsRef);dbTagsRef=null;}
+}
+
+// SECTIONS
+function sortedSectionKeys(){
+  return Object.entries(sections)
+    .sort(([,a],[,b])=>(a.order??a.ts??0)-(b.order??b.ts??0))
+    .map(([k])=>k);
+}
+function updateSectionTitle(){
+  const name=activeSectionId&&sections[activeSectionId]
+    ?sections[activeSectionId].name
+    :'お買いもの';
+  document.getElementById('sectionTitle').textContent=name;
+}
+
+window.openNewSectionSheet=function(){
+  document.getElementById('newSectionInput').value='';
+  openSheet('newSectionSheet');
+  setTimeout(()=>document.getElementById('newSectionInput').focus(),300);
+};
+window.confirmNewSection=function(){
+  const name=document.getElementById('newSectionInput').value.trim();
+  if(!name){showToast('名前を入力してください');return;}
+  const order=Object.keys(sections).length;
+  push(ref(db,`rooms/${roomId}/sections`),{name,order,ts:Date.now()});
+  closeSheet('newSectionSheet');
+};
+
+window.openEditSectionSheet=function(key){
+  editingSectionKey=key;
+  document.getElementById('editSectionInput').value=sections[key]?.name??'';
+  openSheet('editSectionSheet');
+  setTimeout(()=>document.getElementById('editSectionInput').focus(),300);
+};
+window.confirmEditSection=function(){
+  const name=document.getElementById('editSectionInput').value.trim();
+  if(!name){showToast('名前を入力してください');return;}
+  update(ref(db,`rooms/${roomId}/sections/${editingSectionKey}`),{name});
+  closeSheet('editSectionSheet');
+  editingSectionKey=null;
+};
+window.confirmDeleteSection=function(){
+  const keys=sortedSectionKeys();
+  if(keys.length<=1){showToast('最後のセクションは削除できません');return;}
+  const other=keys.find(k=>k!==editingSectionKey);
+  Object.entries(items)
+    .filter(([,v])=>v.sectionId===editingSectionKey)
+    .forEach(([k])=>update(ref(db,`rooms/${roomId}/items/${k}`),{sectionId:other}));
+  remove(ref(db,`rooms/${roomId}/sections/${editingSectionKey}`));
+  if(activeSectionId===editingSectionKey)activeSectionId=other;
+  closeSheet('editSectionSheet');
+  editingSectionKey=null;
+  showToast('セクションを削除しました');
+};
+
+window.selectSection=function(key){
+  activeSectionId=key;
+  updateSectionTitle();
+  renderTabs();
+  render();
+};
+
+// ITEMS
+window.addItem=function(){
+  if(!activeSectionId){showToast('セクションを選択してください');return;}
+  const nameEl=document.getElementById('addInput');
+  const qtyEl =document.getElementById('addQty');
+  const memoEl=document.getElementById('addMemo');
+  const name  =nameEl.value.trim();
+  if(!name){nameEl.focus();return;}
+  const sectionItems=Object.values(items).filter(v=>v.sectionId===activeSectionId&&!v.done);
+  const maxOrder=sectionItems.length?Math.max(...sectionItems.map(v=>v.order??v.ts??0)):0;
+  push(ref(db,`rooms/${roomId}/items`),{
+    name,
+    qty:qtyEl.value||'1',
+    memo:memoEl.value.trim(),
+    done:false,
+    by:myName,
+    ts:Date.now(),
+    sectionId:activeSectionId,
+    tag:null,
+    order:maxOrder+1000,
+  });
+  nameEl.value='';
+  qtyEl.value=1;
+  memoEl.value='';
+  nameEl.focus();
+};
+
+window.toggleItem=function(key){
+  const item=items[key];if(!item)return;
+  update(ref(db,`rooms/${roomId}/items/${key}`),{
+    done:!item.done,doneBy:!item.done?myName:null,
+  });
+};
+window.deleteItem=function(key){
+  remove(ref(db,`rooms/${roomId}/items/${key}`));
+};
+
+window.openMemoEdit = function (key) {
+  const item = items[key]; if (!item || item.done) return;
+  editingItemKey = key;
+  editingTagId = item.tag || null;
+  editingSectionId = item.sectionId || null;
+  document.getElementById('editNameInput').value = item.name || '';
+  document.getElementById('editQtyInput').value = item.qty || 1;
+  document.getElementById('memoEditInput').value = item.memo || '';
+  renderEditTagSelect(item.tag || null);
+  // セクション移動セレクタ描画
+  const sectionKeys=sortedSectionKeys();
+  const lbl=document.getElementById('editSectionLbl');
+  const sel=document.getElementById('editSectionSelect');
+  if(sectionKeys.length<=1){
+    lbl.style.display='none';sel.style.display='none';
+  } else {
+    lbl.style.display='';sel.style.display='';
+    sel.innerHTML=sectionKeys.map(k=>`<option value="${k}"${k===editingSectionId?' selected':''}>${esc(sections[k].name)}</option>`).join('');
+  }
+  openSheet('memoSheet');
+};
+window.saveMemo = function () {
+  if (!editingItemKey) return;
+  const name = document.getElementById('editNameInput').value.trim();
+  const qty = document.getElementById('editQtyInput').value || '1';
+  const memo = document.getElementById('memoEditInput').value.trim();
+  if (!name) { showToast('アイテム名を入力してください'); return; }
+  const sel=document.getElementById('editSectionSelect');
+  const newSectionId=sel.style.display!=='none'?sel.value:editingSectionId;
+  const payload={name,qty,memo,tag:editingTagId||null};
+  if(newSectionId&&newSectionId!==editingSectionId)payload.sectionId=newSectionId;
+  update(ref(db,`rooms/${roomId}/items/${editingItemKey}`),payload);
+  closeSheet('memoSheet');
+  editingItemKey=null;editingSectionId=null;
+  showToast('アイテムを更新しました');
+};
+
+// store tags
+window.addStoreTag=function(){
+  const inp=document.getElementById('tagNameInp');
+  const name=inp.value.trim();
+  if(!name){showToast('タグ名を入力してください');return;}
+  push(ref(db,`rooms/${roomId}/storeTags`),{name,ts:Date.now()});
+  inp.value='';
+};
+window.removeStoreTag=function(key){
+  Object.entries(items).filter(([,v])=>v.tag===key)
+    .forEach(([k])=>update(ref(db,`rooms/${roomId}/items/${k}`),{tag:null}));
+  remove(ref(db,`rooms/${roomId}/storeTags/${key}`));
+  if(activeTagFilter===key){activeTagFilter=null;renderStoreFilter();render();}
+};
+window.setTagFilter=function(key){
+  activeTagFilter=activeTagFilter===key?null:key;
+  renderStoreFilter();render();
+};
+function renderStoreFilter(){
+  const wrap=document.getElementById('storeFilter');
+  const tagList=Object.entries(storeTags);
+  if(tagList.length===0){wrap.style.display='none';return;}
+  wrap.style.display='flex';
+  let html=`<button class="store-pill store-pill-all${activeTagFilter===null?' active':''}" onclick="setTagFilter(null)">すべて</button>`;
+  html+=tagList.map(([k,v])=>
+    `<button class="store-pill${activeTagFilter===k?' active':''}" onclick="setTagFilter('${k}')">${esc(v.name)}</button>`
+  ).join('');
+  wrap.innerHTML=html;
+}
+function renderTagManage(){
+  const wrap=document.getElementById('tagManageList');
+  if(!wrap)return;
+  const tagList=Object.entries(storeTags);
+  if(tagList.length===0){wrap.innerHTML='<span style="font-size:12px;color:var(--text3);">タグはまだありません</span>';return;}
+  wrap.innerHTML=tagList.map(([k,v])=>
+    `<div class="tag-manage-item">${esc(v.name)}<button class="tag-del-btn" onclick="removeStoreTag('${k}')">×</button></div>`
+  ).join('');
+}
+function renderEditTagSelect(currentTag){
+  const wrap=document.getElementById('editTagSelect');
+  if(!wrap)return;
+  const tagList=Object.entries(storeTags);
+  let html=`<button class="tag-opt-none${!currentTag?' selected':''}" onclick="selectEditTag(null)">なし</button>`;
+  html+=tagList.map(([k,v])=>
+    `<button class="tag-opt${currentTag===k?' selected':''}" onclick="selectEditTag('${k}')">${esc(v.name)}</button>`
+  ).join('');
+  wrap.innerHTML=html;
+}
+window.selectEditTag=function(key){
+  editingTagId=key;
+  document.querySelectorAll('#editTagSelect .tag-opt,#editTagSelect .tag-opt-none').forEach(el=>el.classList.remove('selected'));
+  const sel=key
+    ?document.querySelector(`#editTagSelect [onclick="selectEditTag('${key}')"]`)
+    :document.querySelector('#editTagSelect .tag-opt-none');
+  if(sel)sel.classList.add('selected');
+};
+// uncheck all
+window.uncheckAll=function(){
+  const doneKeys=Object.entries(items)
+    .filter(([,v])=>v.done&&v.sectionId===activeSectionId).map(([k])=>k);
+  doneKeys.forEach(k=>update(ref(db,`rooms/${roomId}/items/${k}`),{done:false,doneBy:null}));
+  showToast('チェックを全解除しました');
+};
+window.openBuySheet=function(){
+  const doneItems=Object.values(items).filter(i=>i.done&&i.sectionId===activeSectionId);
+  if(doneItems.length===0){showToast('カゴに入れたアイテムがありません');return;}
+  document.getElementById('buySheetSub').textContent=
+    `カゴに入れた ${doneItems.length} 件のアイテムをすべて削除します。`;
+  openSheet('buySheet');
+};
+window.confirmBuy=function(){
+  const doneKeys=Object.entries(items)
+    .filter(([,v])=>v.done&&v.sectionId===activeSectionId)
+    .map(([k])=>k);
+  doneKeys.forEach(k=>remove(ref(db,`rooms/${roomId}/items/${k}`)));
+  closeSheet('buySheet');
+  showToast(`${doneKeys.length} 件を削除しました`);
+};
+
+// RENDER TABS
+function renderTabs(){
+  const bar=document.getElementById('tabsBar');
+  const keys=sortedSectionKeys();
+  let html=keys.map(k=>{
+    const s=sections[k];
+    const active=k===activeSectionId?'active':'';
+    const label=truncate(s.name,5);
+    return `<button class="tab ${active}" data-key="${k}" onclick="selectSection('${k}')">${esc(label)}</button>`;
+  }).join('');
+  html+=`<button class="tab-add" onclick="openNewSectionSheet()" title="セクションを追加">
+    <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+      <path d="M4.5 1v7M1 4.5h7" stroke="var(--text2)" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+  </button>`;
+  bar.innerHTML=html;
+
+  bar.querySelectorAll('.tab').forEach(el=>{
+    let timer=null;
+    let fired=false;
+    const key=el.dataset.key;
+    const start=()=>{fired=false;timer=setTimeout(()=>{fired=true;openEditSectionSheet(key);},500);};
+    const cancel=()=>clearTimeout(timer);
+    const end=(e)=>{clearTimeout(timer);if(fired){e.preventDefault();}};
+    el.addEventListener('touchstart',start,{passive:true});
+    el.addEventListener('touchend',end);
+    el.addEventListener('touchmove',cancel);
+    el.addEventListener('mousedown',start);
+    el.addEventListener('mouseup',cancel);
+    el.addEventListener('mouseleave',cancel);
+  });
+}
+
+// RENDER LIST
+function render(){
+  const wrap=document.getElementById('listWrap');
+  if(!activeSectionId){wrap.innerHTML='';return;}
+
+  let all=Object.entries(items)
+    .filter(([,v])=>v.sectionId===activeSectionId)
+    .map(([k,v])=>({key:k,...v}));
+  if(activeTagFilter!==null)all=all.filter(i=>i.tag===activeTagFilter);
+  all.sort((a,b)=>((a.order??a.ts)??0)-((b.order??b.ts)??0));
+
+  const todo=all.filter(i=>!i.done);
+  const done=all.filter(i=> i.done);
+  const pct =all.length?Math.round(done.length/all.length*100):0;
+
+  let html='';
+
+  if(all.length>0){
+    html+=`<div class="prog-wrap">
+      <div class="prog-label">${done.length} / ${all.length} 完了</div>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+
+  if(todo.length===0&&done.length===0){
+    html+=`<div class="empty"><div class="empty-icon">🛒</div>このセクションはまだ空です<br>上から追加してみよう</div>`;
+  }
+
+  html+=`<div class="section-list" data-section="${activeSectionId}">${todo.map(i=>itemRow(i,false)).join('')}</div>`;
+
+  if(done.length>0){
+    html+=`<div class="sec-row">
+      <span class="sec-lbl">カゴに入れた（${done.length}）</span>
+      <div class="sec-actions">
+        <button class="uncheck-btn" onclick="uncheckAll()">全解除</button>
+        <button class="buy-btn" onclick="openBuySheet()">購入 ✓</button>
+      </div>
+    </div>`;
+    html+=done.map(i=>itemRow(i,true)).join('');
+  }
+
+  wrap.innerHTML=html;
+  attachLongPress();
+  initSortable();
+}
+
+function itemRow(item,inCart){
+  const isMine=item.by===myName;
+  const av=isMine?'av-me':'av-partner';
+  const avL=item.by?esc(item.by.charAt(0)):'?';
+  const tagName=item.tag&&storeTags[item.tag]?storeTags[item.tag].name:null;
+  const sub=[
+    item.qty ?`<span class="item-qty">${esc(item.qty)}</span>`:'',
+    item.memo?`<span class="item-memo">${esc(item.memo)}</span>`:'',
+    tagName?`<span class="item-tag">${esc(tagName)}</span>`:'',
+  ].filter(Boolean).join('');
+
+  return `<div class="item${inCart?' in-cart':''}" data-key="${item.key}">
+    <div class="drag-handle">⠿</div>
+    <div class="check-wrap" onclick="toggleItem('${item.key}')">
+      <div class="check">
+        <svg width="11" height="8" viewBox="0 0 11 8" fill="none">
+          <path d="M1 4L4 7L10 1" stroke="#3B6D11" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+    </div>
+    <div class="item-body">
+      <div class="item-name">${esc(item.name)}</div>
+      ${sub?`<div class="item-sub">${sub}</div>`:''}
+      <div class="item-by">${esc(item.by)} が追加</div>
+    </div>
+    <div class="item-right">
+      <div class="avatar ${av}">${avL}</div>
+      <button class="del-btn" onclick="deleteItem('${item.key}')">
+        <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+          <path d="M1 1l9 9M10 1L1 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+  </div>`;
+}
+
+function attachLongPress(){
+  document.querySelectorAll('.item:not(.in-cart)').forEach(el=>{
+    let timer=null;
+    let fired=false;
+    const start=(e)=>{
+      if(e.target.closest('.drag-handle'))return;
+      fired=false;
+      timer=setTimeout(()=>{fired=true;openMemoEdit(el.dataset.key);},500);
+    };
+    const cancel=()=>clearTimeout(timer);
+    const end=(e)=>{
+      clearTimeout(timer);
+      if(fired){e.preventDefault();}
+    };
+    el.addEventListener('touchstart',start,{passive:true});
+    el.addEventListener('touchend',end);
+    el.addEventListener('touchmove',cancel);
+    el.addEventListener('mousedown',start);
+    el.addEventListener('mouseup',cancel);
+    el.addEventListener('mouseleave',cancel);
+  });
+}
+let sortableInstances=[];
+function initSortable(){
+  sortableInstances.forEach(s=>s.destroy());
+  sortableInstances=[];
+  document.querySelectorAll('.section-list').forEach(el=>{
+    const inst=Sortable.create(el,{
+      handle:'.drag-handle',
+      animation:150,
+      filter:'.in-cart',
+      ghostClass:'sortable-ghost',
+      dragClass:'sortable-drag',
+      onEnd:handleDragEnd,
+    });
+    sortableInstances.push(inst);
+  });
+}
+function handleDragEnd(evt){
+  const listEl=evt.to;
+  const els=[...listEl.querySelectorAll('.item:not(.in-cart)')];
+  const updates={};
+  els.forEach((el,i)=>{
+    updates[`rooms/${roomId}/items/${el.dataset.key}/order`]=(i+1)*1000;
+  });
+  update(ref(db),updates);
+}
+
+// INIT
+
+const saved=(()=>{try{return JSON.parse(localStorage.getItem(SESSION));}catch{return null;}})();
+if(saved?.myName&&saved?.roomId){
+  document.getElementById('myName').value=saved.myName;
+  enterRoom(saved.myName,saved.roomId,false);
+}else{
+  showScreen('setupScreen');
+}
+</script>
+
+<script>
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</div><!-- /appShell -->
+</body>
+</html>
