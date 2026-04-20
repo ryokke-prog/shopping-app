@@ -230,7 +230,7 @@
     .buy-btn:active{transform:scale(.94);opacity:.8;}
 
     /* ITEM */
-    .item{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;user-select:none;}
+    .item{display:flex;align-items:flex-start;gap:12px;padding:13px 16px;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
     .item+.item{border-top:1px solid var(--border);}
     .item.in-cart{opacity:.68;}
     .check-wrap{flex-shrink:0;padding-top:1px;cursor:pointer;}
@@ -873,6 +873,7 @@ window.openMemoEdit = function (key) {
       renderEditTagSelect(newSec,editingTagId);
     };
   }
+  document.activeElement?.blur();
   openSheet('memoSheet');
 };
 window.saveMemo = function () {
@@ -1139,6 +1140,7 @@ function attachLongPress(){
     el.addEventListener('touchstart',start,{passive:true});
     el.addEventListener('touchend',end);
     el.addEventListener('touchmove',cancel);
+    el.addEventListener('contextmenu',e=>{e.preventDefault();});
     el.addEventListener('mousedown',start);
     el.addEventListener('mouseup',cancel);
     el.addEventListener('mouseleave',cancel);
