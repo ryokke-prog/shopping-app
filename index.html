@@ -191,6 +191,24 @@
       cursor:pointer;margin-left:2px;
     }
     .tab-add:active{background:var(--bg3);}
+    .tags-bar{
+      display:flex;align-items:center;
+      padding:6px 12px 6px;
+      border-bottom:1px solid var(--border);
+      flex-shrink:0;gap:5px;
+      overflow-x:auto;scrollbar-width:none;
+    }
+    .tags-bar::-webkit-scrollbar{display:none;}
+    .tag-tab{
+      flex-shrink:0;padding:4px 11px;border-radius:20px;
+      font-size:12px;font-weight:500;
+      border:1px solid var(--border2);
+      background:transparent;color:var(--text2);
+      cursor:pointer;white-space:nowrap;
+      max-width:100px;overflow:hidden;text-overflow:ellipsis;
+      transition:all .15s;font-family:inherit;
+    }
+    .tag-tab.active{background:var(--amber-bg);color:var(--amber);border-color:var(--amber);}
 
     /* LIST */
     .list-wrap{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
@@ -323,6 +341,8 @@
     .tag-opt-none{padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--text3);font-size:13px;cursor:pointer;font-family:inherit;}
     .tag-opt-none.selected{background:var(--bg2);color:var(--text);border-color:var(--border2);}
     .item-tag{font-size:11px;padding:1px 7px;border-radius:20px;background:var(--amber-bg);color:var(--amber);font-weight:500;}
+    .item-link-icon{font-size:14px;cursor:pointer;color:var(--text3);flex-shrink:0;padding:0 2px;text-decoration:none;transition:color .15s;line-height:1;}
+    .item-link-icon:active{color:var(--blue);}
     .uncheck-btn{height:26px;padding:0 10px;background:var(--bg2);color:var(--text2);border:1px solid var(--border2);border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit;}
     .sec-actions{display:flex;gap:6px;align-items:center;}
 
@@ -419,8 +439,8 @@
     </div>
   </div>
 
-  <div class="store-filter" id="storeFilter" style="display:none;"></div>
   <div class="tabs-bar" id="tabsBar"></div>
+  <div class="tags-bar" id="tagTabsBar"></div>
   <div class="list-wrap" id="listWrap"></div>
 </div>
 
@@ -435,13 +455,6 @@
     <div class="toggle-row">
       <span class="toggle-label">ダークモード</span>
       <button class="toggle" id="darkToggle" onclick="toggleDark()"><div class="toggle-knob"></div></button>
-    </div>
-    <div class="drawer-sub-lbl">店舗タグ</div>
-    <div class="tag-manage-list" id="tagManageList"><span style="font-size:12px;color:var(--text3);">タグはまだありません</span></div>
-    <div class="tag-add-row">
-      <input class="tag-inp" id="tagNameInp" placeholder="例：スーパー" maxlength="10"
-        onkeydown="event.key==='Enter'&&event.preventDefault()">
-      <button class="tag-add-btn" onclick="addStoreTag()">追加</button>
     </div>
     <div class="drawer-row danger" style="margin-top:auto;" onclick="logout()">
       <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -476,7 +489,9 @@
     </div>
     <input class="sheet-inp" id="memoEditInput" placeholder="メモ（サイズ、ブランドなど）"
       onkeydown="if((event.metaKey||event.ctrlKey)&&event.key==='Enter')saveMemo()">
-    <div class="sheet-lbl">店舗タグ</div>
+    <div class="sheet-lbl">URL（任意）</div>
+    <input class="sheet-inp" id="editUrlInput" placeholder="https://..." type="url">
+    <div class="sheet-lbl">タグ</div>
     <div class="tag-select-wrap" id="editTagSelect"></div>
     <div class="sheet-lbl" id="editSectionLbl">移動先セクション</div>
     <select class="sheet-select" id="editSectionSelect"></select>
@@ -510,6 +525,31 @@
   </div>
 </div>
 
+<!-- SHEET: 新しいタグ -->
+<div class="sheet-overlay" id="newTagSheet" onclick="closeSheet('newTagSheet',event)">
+  <div class="sheet">
+    <div class="sheet-title">新しいタグを追加</div>
+    <div class="sheet-sub">現在のセクションにタグを追加します</div>
+    <input class="sheet-inp" id="newTagInput" placeholder="例：ゲンキー" maxlength="10"
+      onkeydown="if(event.key==='Enter')confirmNewTag()">
+    <button class="sbtn sbtn-green" style="margin-bottom:10px" onclick="confirmNewTag()">追加</button>
+    <button class="sbtn sbtn-secondary" onclick="closeSheet('newTagSheet')">キャンセル</button>
+  </div>
+</div>
+
+<!-- SHEET: タグ編集 -->
+<div class="sheet-overlay" id="editTagSheet" onclick="closeSheet('editTagSheet',event)">
+  <div class="sheet">
+    <div class="sheet-title">タグを編集</div>
+    <div class="sheet-sub">名前の変更または削除ができます</div>
+    <input class="sheet-inp" id="editTagInput" placeholder="タグ名" maxlength="10"
+      onkeydown="if(event.key==='Enter')confirmEditTag()">
+    <button class="sbtn sbtn-green" style="margin-bottom:10px" onclick="confirmEditTag()">名前を変更</button>
+    <button class="sbtn sbtn-danger" style="margin-bottom:10px" onclick="confirmDeleteTag()">このタグを削除</button>
+    <button class="sbtn sbtn-secondary" onclick="closeSheet('editTagSheet')">キャンセル</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -532,9 +572,9 @@ const db  = getDatabase(app);
 
 let myName='', roomId='';
 let items={}, sections={}, storeTags={};
-let activeSectionId=null, activeTagFilter=null;
+let activeSectionId=null, activeTagId=null;
 let dbItemsRef=null, dbSecRef=null, dbTagsRef=null;
-let editingItemKey=null, editingSectionKey=null, editingTagId=null, editingSectionId=null;
+let editingItemKey=null, editingSectionKey=null, editingTagId=null, editingSectionId=null, editingTagKey=null;
 const SESSION='shopping_session_v9';
 const DEFAULT_SECTION='リスト';
 
@@ -586,7 +626,6 @@ function setSyncStatus(s){
 window.openDrawer=function(){
   document.getElementById('drawerOverlay').classList.add('show');
   applyTheme();
-  renderTagManage();
 };
 window.closeDrawerOnBg=function(e){
   if(e.target===document.getElementById('drawerOverlay'))
@@ -632,7 +671,7 @@ window.logout=function(){
     if(!confirm('このリストから退出しますか？'))return;
     stopListening();
     localStorage.removeItem(SESSION);
-    myName='';roomId='';items={};sections={};storeTags={};activeSectionId=null;activeTagFilter=null;
+    myName='';roomId='';items={};sections={};storeTags={};activeSectionId=null;activeTagId=null;
     document.getElementById('myName').value='';
     document.getElementById('joinCode').value='';
     showScreen('setupScreen');
@@ -665,6 +704,7 @@ function startListening(isNew){
     }
     updateSectionTitle();
     renderTabs();
+    renderTagTabs();
     render();
   });
 
@@ -680,9 +720,22 @@ function startListening(isNew){
 
   dbTagsRef=ref(db,`rooms/${roomId}/storeTags`);
   onValue(dbTagsRef,snap=>{
-    storeTags=snap.val()||{};
-    renderStoreFilter();
-    renderTagManage();
+    const data=snap.val()||{};
+    const legacy=Object.entries(data).filter(([,v])=>!v.sectionId);
+    if(legacy.length>0){
+      const legacyKeys=new Set(legacy.map(([k])=>k));
+      const updates={};
+      legacy.forEach(([k])=>{updates[`rooms/${roomId}/storeTags/${k}`]=null;});
+      Object.entries(items).forEach(([k,v])=>{
+        if(v.tag&&legacyKeys.has(v.tag))updates[`rooms/${roomId}/items/${k}/tag`]=null;
+      });
+      update(ref(db),updates);
+      storeTags=Object.fromEntries(Object.entries(data).filter(([,v])=>v.sectionId));
+    } else {
+      storeTags=data;
+    }
+    renderTagTabs();
+    render();
   });
 }
 function stopListening(){
@@ -746,8 +799,10 @@ window.confirmDeleteSection=function(){
 
 window.selectSection=function(key){
   activeSectionId=key;
+  activeTagId=null;
   updateSectionTitle();
   renderTabs();
+  renderTagTabs();
   render();
 };
 
@@ -769,7 +824,7 @@ window.addItem=function(){
     by:myName,
     ts:Date.now(),
     sectionId:activeSectionId,
-    tag:null,
+    tag:activeTagId||null,
     order:maxOrder+1000,
   });
   nameEl.value='';
@@ -796,7 +851,8 @@ window.openMemoEdit = function (key) {
   document.getElementById('editNameInput').value = item.name || '';
   document.getElementById('editQtyInput').value = item.qty || 1;
   document.getElementById('memoEditInput').value = item.memo || '';
-  renderEditTagSelect(item.tag || null);
+  document.getElementById('editUrlInput').value = item.url || '';
+  renderEditTagSelect(editingSectionId, item.tag || null);
   // セクション移動セレクタ描画
   const sectionKeys=sortedSectionKeys();
   const lbl=document.getElementById('editSectionLbl');
@@ -806,6 +862,12 @@ window.openMemoEdit = function (key) {
   } else {
     lbl.style.display='';sel.style.display='';
     sel.innerHTML=sectionKeys.map(k=>`<option value="${k}"${k===editingSectionId?' selected':''}>${esc(sections[k].name)}</option>`).join('');
+    sel.onchange=function(){
+      const newSec=this.value;
+      const tagStillValid=editingTagId&&storeTags[editingTagId]?.sectionId===newSec;
+      if(!tagStillValid)editingTagId=null;
+      renderEditTagSelect(newSec,editingTagId);
+    };
   }
   openSheet('memoSheet');
 };
@@ -815,9 +877,11 @@ window.saveMemo = function () {
   const qty = document.getElementById('editQtyInput').value || '1';
   const memo = document.getElementById('memoEditInput').value.trim();
   if (!name) { showToast('アイテム名を入力してください'); return; }
+  const urlVal = document.getElementById('editUrlInput').value.trim();
+  if (urlVal && !/^https?:\/\//i.test(urlVal)) { showToast('URLはhttps://またはhttp://で始まる形式で入力してください'); return; }
   const sel=document.getElementById('editSectionSelect');
   const newSectionId=sel.style.display!=='none'?sel.value:editingSectionId;
-  const payload={name,qty,memo,tag:editingTagId||null};
+  const payload={name,qty,memo,tag:editingTagId||null,url:urlVal||null};
   if(newSectionId&&newSectionId!==editingSectionId)payload.sectionId=newSectionId;
   update(ref(db,`rooms/${roomId}/items/${editingItemKey}`),payload);
   closeSheet('memoSheet');
@@ -825,48 +889,80 @@ window.saveMemo = function () {
   showToast('アイテムを更新しました');
 };
 
-// store tags
-window.addStoreTag=function(){
-  const inp=document.getElementById('tagNameInp');
-  const name=inp.value.trim();
+// tag management (section-scoped)
+window.openNewTagSheet=function(){
+  if(!activeSectionId){showToast('セクションを選択してください');return;}
+  document.getElementById('newTagInput').value='';
+  openSheet('newTagSheet');
+  setTimeout(()=>document.getElementById('newTagInput').focus(),300);
+};
+window.confirmNewTag=function(){
+  const name=document.getElementById('newTagInput').value.trim();
   if(!name){showToast('タグ名を入力してください');return;}
-  push(ref(db,`rooms/${roomId}/storeTags`),{name,ts:Date.now()});
-  inp.value='';
+  push(ref(db,`rooms/${roomId}/storeTags`),{name,ts:Date.now(),sectionId:activeSectionId});
+  closeSheet('newTagSheet');
 };
-window.removeStoreTag=function(key){
-  Object.entries(items).filter(([,v])=>v.tag===key)
+window.openEditTagSheet=function(key){
+  editingTagKey=key;
+  document.getElementById('editTagInput').value=storeTags[key]?.name??'';
+  openSheet('editTagSheet');
+  setTimeout(()=>document.getElementById('editTagInput').focus(),300);
+};
+window.confirmEditTag=function(){
+  const name=document.getElementById('editTagInput').value.trim();
+  if(!name){showToast('タグ名を入力してください');return;}
+  update(ref(db,`rooms/${roomId}/storeTags/${editingTagKey}`),{name});
+  closeSheet('editTagSheet');
+  editingTagKey=null;
+};
+window.confirmDeleteTag=function(){
+  Object.entries(items).filter(([,v])=>v.tag===editingTagKey)
     .forEach(([k])=>update(ref(db,`rooms/${roomId}/items/${k}`),{tag:null}));
-  remove(ref(db,`rooms/${roomId}/storeTags/${key}`));
-  if(activeTagFilter===key){activeTagFilter=null;renderStoreFilter();render();}
+  remove(ref(db,`rooms/${roomId}/storeTags/${editingTagKey}`));
+  if(activeTagId===editingTagKey)activeTagId=null;
+  closeSheet('editTagSheet');
+  editingTagKey=null;
+  showToast('タグを削除しました');
 };
-window.setTagFilter=function(key){
-  activeTagFilter=activeTagFilter===key?null:key;
-  renderStoreFilter();render();
+window.selectTag=function(key){
+  activeTagId=key;
+  renderTagTabs();
+  render();
 };
-function renderStoreFilter(){
-  const wrap=document.getElementById('storeFilter');
-  const tagList=Object.entries(storeTags);
-  if(tagList.length===0){wrap.style.display='none';return;}
-  wrap.style.display='flex';
-  let html=`<button class="store-pill store-pill-all${activeTagFilter===null?' active':''}" onclick="setTagFilter(null)">すべて</button>`;
-  html+=tagList.map(([k,v])=>
-    `<button class="store-pill${activeTagFilter===k?' active':''}" onclick="setTagFilter('${k}')">${esc(v.name)}</button>`
+function renderTagTabs(){
+  const bar=document.getElementById('tagTabsBar');
+  if(!bar||!activeSectionId)return;
+  const sectionTags=Object.entries(storeTags)
+    .filter(([,v])=>v.sectionId===activeSectionId);
+  if(activeTagId!==null&&!sectionTags.find(([k])=>k===activeTagId))activeTagId=null;
+  let html=`<button class="tag-tab${activeTagId===null?' active':''}" onclick="selectTag(null)">全部</button>`;
+  html+=sectionTags.map(([k,v])=>
+    `<button class="tag-tab${activeTagId===k?' active':''}" data-tagkey="${k}" onclick="selectTag('${k}')">${esc(v.name)}</button>`
   ).join('');
-  wrap.innerHTML=html;
+  html+=`<button class="tab-add" onclick="openNewTagSheet()" title="タグを追加">
+    <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+      <path d="M4.5 1v7M1 4.5h7" stroke="var(--text2)" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+  </button>`;
+  bar.innerHTML=html;
+  bar.querySelectorAll('.tag-tab[data-tagkey]').forEach(el=>{
+    let timer=null,fired=false;
+    const key=el.dataset.tagkey;
+    const start=()=>{fired=false;timer=setTimeout(()=>{fired=true;openEditTagSheet(key);},500);};
+    const cancel=()=>clearTimeout(timer);
+    const end=(e)=>{clearTimeout(timer);if(fired)e.preventDefault();};
+    el.addEventListener('touchstart',start,{passive:true});
+    el.addEventListener('touchend',end);
+    el.addEventListener('touchmove',cancel);
+    el.addEventListener('mousedown',start);
+    el.addEventListener('mouseup',cancel);
+    el.addEventListener('mouseleave',cancel);
+  });
 }
-function renderTagManage(){
-  const wrap=document.getElementById('tagManageList');
-  if(!wrap)return;
-  const tagList=Object.entries(storeTags);
-  if(tagList.length===0){wrap.innerHTML='<span style="font-size:12px;color:var(--text3);">タグはまだありません</span>';return;}
-  wrap.innerHTML=tagList.map(([k,v])=>
-    `<div class="tag-manage-item">${esc(v.name)}<button class="tag-del-btn" onclick="removeStoreTag('${k}')">×</button></div>`
-  ).join('');
-}
-function renderEditTagSelect(currentTag){
+function renderEditTagSelect(sectionId,currentTag){
   const wrap=document.getElementById('editTagSelect');
   if(!wrap)return;
-  const tagList=Object.entries(storeTags);
+  const tagList=Object.entries(storeTags).filter(([,v])=>v.sectionId===sectionId);
   let html=`<button class="tag-opt-none${!currentTag?' selected':''}" onclick="selectEditTag(null)">なし</button>`;
   html+=tagList.map(([k,v])=>
     `<button class="tag-opt${currentTag===k?' selected':''}" onclick="selectEditTag('${k}')">${esc(v.name)}</button>`
@@ -945,7 +1041,7 @@ function render(){
   let all=Object.entries(items)
     .filter(([,v])=>v.sectionId===activeSectionId)
     .map(([k,v])=>({key:k,...v}));
-  if(activeTagFilter!==null)all=all.filter(i=>i.tag===activeTagFilter);
+  if(activeTagId!==null)all=all.filter(i=>i.tag===activeTagId);
   all.sort((a,b)=>((a.order??a.ts)??0)-((b.order??b.ts)??0));
 
   const todo=all.filter(i=>!i.done);
@@ -1009,6 +1105,7 @@ function itemRow(item,inCart){
       <div class="item-by">${esc(item.by)} が追加</div>
     </div>
     <div class="item-right">
+      ${item.url?`<a class="item-link-icon" href="${esc(item.url)}" target="_blank" rel="noopener" ontouchstart="event.stopPropagation()" onclick="event.stopPropagation()">🔗</a>`:''}
       <div class="avatar ${av}">${avL}</div>
       <button class="del-btn" onclick="deleteItem('${item.key}')">
         <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
