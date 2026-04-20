@@ -349,6 +349,7 @@
     .sec-actions{display:flex;gap:6px;align-items:center;}
 
     /* BOTTOM SHEET */
+    .sheet.opening *{user-select:none!important;-webkit-user-select:none!important;}
     .sheet-overlay{
       position:fixed;inset:0;background:rgba(0,0,0,0.4);
       display:flex;align-items:flex-end;justify-content:center;
@@ -874,6 +875,9 @@ window.openMemoEdit = function (key) {
     };
   }
   document.activeElement?.blur();
+  const sheetEl=document.querySelector('#memoSheet .sheet');
+  sheetEl.classList.add('opening');
+  setTimeout(()=>sheetEl.classList.remove('opening'),700);
   openSheet('memoSheet');
 };
 window.saveMemo = function () {
