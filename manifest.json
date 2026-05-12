@@ -1,6 +1,6 @@
 {
-  "name": "お買いもの",
-  "short_name": "お買いもの",
+  "name": "KAIMONO",
+  "short_name": "KAIMONO",
   "description": "パートナーと共有できる買い物リスト",
   "start_url": "/shopping-app/",
   "scope": "/shopping-app/",

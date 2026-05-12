@@ -1,4 +1,4 @@
-const CACHE = 'shopping-v15';
+const CACHE = 'shopping-v16';
 const FILES = ['/shopping-app/', '/shopping-app/index.html', '/shopping-app/manifest.json', '/shopping-app/512-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)));
