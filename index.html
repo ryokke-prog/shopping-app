@@ -374,6 +374,11 @@
     .sheet-inp:focus{border-color:var(--green);}
     .sheet-select{width:100%;height:44px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:0 12px;color:var(--text);outline:none;font-size:15px;font-family:inherit;margin-bottom:12px;cursor:pointer;}
     .sheet-select:focus{border-color:var(--green);}
+    .reorder-row{display:flex;gap:8px;margin-bottom:10px;}
+    .reorder-row .sbtn{flex:1;margin-bottom:0;height:46px;font-size:14px;}
+    .sbtn:disabled{opacity:.38;cursor:not-allowed;transform:none!important;}
+    .tab.editing{outline:2px dashed var(--amber);outline-offset:1px;}
+    .tag-tab.editing{outline:2px dashed var(--amber);outline-offset:1px;}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 </head>
@@ -520,6 +525,10 @@
   <div class="sheet">
     <div class="sheet-title">セクションを編集</div>
     <div class="sheet-sub">名前の変更または削除ができます</div>
+    <div class="reorder-row">
+      <button class="sbtn sbtn-secondary" id="editSectionMoveLeft" onclick="moveSection(-1)">← 左へ</button>
+      <button class="sbtn sbtn-secondary" id="editSectionMoveRight" onclick="moveSection(1)">右へ →</button>
+    </div>
     <input class="sheet-inp" id="editSectionInput" placeholder="セクション名" maxlength="20"
       onkeydown="if(event.key==='Enter')confirmEditSection()">
     <button class="sbtn sbtn-green" style="margin-bottom:10px" onclick="confirmEditSection()">名前を変更</button>
@@ -545,6 +554,10 @@
   <div class="sheet">
     <div class="sheet-title">タグを編集</div>
     <div class="sheet-sub">名前の変更または削除ができます</div>
+    <div class="reorder-row">
+      <button class="sbtn sbtn-secondary" id="editTagMoveLeft" onclick="moveTag(-1)">← 左へ</button>
+      <button class="sbtn sbtn-secondary" id="editTagMoveRight" onclick="moveTag(1)">右へ →</button>
+    </div>
     <input class="sheet-inp" id="editTagInput" placeholder="タグ名" maxlength="10"
       onkeydown="if(event.key==='Enter')confirmEditTag()">
     <button class="sbtn sbtn-green" style="margin-bottom:10px" onclick="confirmEditTag()">名前を変更</button>
@@ -760,6 +773,12 @@ function sortedSectionKeys(){
     .sort(([,a],[,b])=>(a.order??a.ts??0)-(b.order??b.ts??0))
     .map(([k])=>k);
 }
+function sortedTagKeys(sectionId){
+  return Object.entries(storeTags)
+    .filter(([,v])=>v.sectionId===sectionId)
+    .sort(([,a],[,b])=>(a.order??a.ts??0)-(b.order??b.ts??0))
+    .map(([k])=>k);
+}
 function updateSectionTitle(){
   const name=activeSectionId&&sections[activeSectionId]
     ?sections[activeSectionId].name
@@ -785,6 +804,7 @@ window.openEditSectionSheet=function(key){
   document.getElementById('editSectionInput').value=sections[key]?.name??'';
   openSheet('editSectionSheet');
   setTimeout(()=>document.getElementById('editSectionInput').focus(),300);
+  refreshSectionReorderButtons();
 };
 window.confirmEditSection=function(){
   const name=document.getElementById('editSectionInput').value.trim();
@@ -792,6 +812,7 @@ window.confirmEditSection=function(){
   update(ref(db,`rooms/${roomId}/sections/${editingSectionKey}`),{name});
   closeSheet('editSectionSheet');
   editingSectionKey=null;
+  renderTabs();
 };
 window.confirmDeleteSection=function(){
   const keys=sortedSectionKeys();
@@ -804,7 +825,33 @@ window.confirmDeleteSection=function(){
   if(activeSectionId===editingSectionKey)activeSectionId=other;
   closeSheet('editSectionSheet');
   editingSectionKey=null;
+  renderTabs();
   showToast('セクションを削除しました');
+};
+
+function refreshSectionReorderButtons(){
+  const L=document.getElementById('editSectionMoveLeft');
+  const R=document.getElementById('editSectionMoveRight');
+  if(!L||!R)return;
+  if(!editingSectionKey||!sections[editingSectionKey]){L.disabled=R.disabled=true;return;}
+  const keys=sortedSectionKeys();
+  const i=keys.indexOf(editingSectionKey);
+  L.disabled=(i<=0);
+  R.disabled=(i<0||i>=keys.length-1);
+}
+window.moveSection=function(direction){
+  if(!editingSectionKey)return;
+  const keys=sortedSectionKeys();
+  const i=keys.indexOf(editingSectionKey);
+  const j=i+direction;
+  if(j<0||j>=keys.length)return;
+  const a=editingSectionKey,b=keys[j];
+  const oa=sections[a]?.order??sections[a]?.ts??0;
+  const ob=sections[b]?.order??sections[b]?.ts??0;
+  const updates={};
+  updates[`rooms/${roomId}/sections/${a}/order`]=ob;
+  updates[`rooms/${roomId}/sections/${b}/order`]=(oa===ob?oa+1:oa);
+  update(ref(db),updates);
 };
 
 window.selectSection=function(key){
@@ -913,7 +960,7 @@ window.openNewTagSheet=function(){
 window.confirmNewTag=function(){
   const name=document.getElementById('newTagInput').value.trim();
   if(!name){showToast('タグ名を入力してください');return;}
-  push(ref(db,`rooms/${roomId}/storeTags`),{name,ts:Date.now(),sectionId:activeSectionId});
+  push(ref(db,`rooms/${roomId}/storeTags`),{name,ts:Date.now(),order:Date.now(),sectionId:activeSectionId});
   closeSheet('newTagSheet');
 };
 window.openEditTagSheet=function(key){
@@ -921,6 +968,7 @@ window.openEditTagSheet=function(key){
   document.getElementById('editTagInput').value=storeTags[key]?.name??'';
   openSheet('editTagSheet');
   setTimeout(()=>document.getElementById('editTagInput').focus(),300);
+  refreshTagReorderButtons();
 };
 window.confirmEditTag=function(){
   const name=document.getElementById('editTagInput').value.trim();
@@ -928,6 +976,7 @@ window.confirmEditTag=function(){
   update(ref(db,`rooms/${roomId}/storeTags/${editingTagKey}`),{name});
   closeSheet('editTagSheet');
   editingTagKey=null;
+  renderTagTabs();
 };
 window.confirmDeleteTag=function(){
   Object.entries(items).filter(([,v])=>v.tag===editingTagKey)
@@ -936,8 +985,37 @@ window.confirmDeleteTag=function(){
   if(activeTagId===editingTagKey)activeTagId=null;
   closeSheet('editTagSheet');
   editingTagKey=null;
+  renderTagTabs();
   showToast('タグを削除しました');
 };
+function refreshTagReorderButtons(){
+  const L=document.getElementById('editTagMoveLeft');
+  const R=document.getElementById('editTagMoveRight');
+  if(!L||!R)return;
+  const tag=editingTagKey?storeTags[editingTagKey]:null;
+  if(!tag){L.disabled=R.disabled=true;return;}
+  const keys=sortedTagKeys(tag.sectionId);
+  const i=keys.indexOf(editingTagKey);
+  L.disabled=(i<=0);
+  R.disabled=(i<0||i>=keys.length-1);
+}
+window.moveTag=function(direction){
+  if(!editingTagKey)return;
+  const tag=storeTags[editingTagKey];
+  if(!tag)return;
+  const keys=sortedTagKeys(tag.sectionId);
+  const i=keys.indexOf(editingTagKey);
+  const j=i+direction;
+  if(j<0||j>=keys.length)return;
+  const a=editingTagKey,b=keys[j];
+  const oa=storeTags[a]?.order??storeTags[a]?.ts??0;
+  const ob=storeTags[b]?.order??storeTags[b]?.ts??0;
+  const updates={};
+  updates[`rooms/${roomId}/storeTags/${a}/order`]=ob;
+  updates[`rooms/${roomId}/storeTags/${b}/order`]=(oa===ob?oa+1:oa);
+  update(ref(db),updates);
+};
+
 window.selectTag=function(key){
   activeTagId=key;
   renderTagTabs();
@@ -946,13 +1024,14 @@ window.selectTag=function(key){
 function renderTagTabs(){
   const bar=document.getElementById('tagTabsBar');
   if(!bar||!activeSectionId)return;
-  const sectionTags=Object.entries(storeTags)
-    .filter(([,v])=>v.sectionId===activeSectionId);
-  if(activeTagId!==null&&!sectionTags.find(([k])=>k===activeTagId))activeTagId=null;
+  const tagKeys=sortedTagKeys(activeSectionId);
+  if(activeTagId!==null&&!tagKeys.includes(activeTagId))activeTagId=null;
   let html=`<button class="tag-tab${activeTagId===null?' active':''}" onclick="selectTag(null)">全部</button>`;
-  html+=sectionTags.map(([k,v])=>
-    `<button class="tag-tab${activeTagId===k?' active':''}" data-tagkey="${k}" onclick="selectTag('${k}')">${esc(v.name)}</button>`
-  ).join('');
+  html+=tagKeys.map(k=>{
+    const v=storeTags[k];
+    const editing=k===editingTagKey&&document.getElementById('editTagSheet')?.classList.contains('show');
+    return `<button class="tag-tab${activeTagId===k?' active':''}${editing?' editing':''}" data-tagkey="${k}" onclick="selectTag('${k}')">${esc(v.name)}</button>`;
+  }).join('');
   html+=`<button class="tab-add" onclick="openNewTagSheet()" title="タグを追加">
     <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
       <path d="M4.5 1v7M1 4.5h7" stroke="var(--text2)" stroke-width="1.4" stroke-linecap="round"/>
@@ -973,6 +1052,7 @@ function renderTagTabs(){
     el.addEventListener('mouseup',cancel);
     el.addEventListener('mouseleave',cancel);
   });
+  refreshTagReorderButtons();
 }
 function renderEditTagSelect(sectionId,currentTag){
   const wrap=document.getElementById('editTagSelect');
@@ -1022,8 +1102,9 @@ function renderTabs(){
   let html=keys.map(k=>{
     const s=sections[k];
     const active=k===activeSectionId?'active':'';
+    const editing=k===editingSectionKey&&document.getElementById('editSectionSheet')?.classList.contains('show');
     const label=truncate(s.name,5);
-    return `<button class="tab ${active}" data-key="${k}" onclick="selectSection('${k}')">${esc(label)}</button>`;
+    return `<button class="tab ${active}${editing?' editing':''}" data-key="${k}" onclick="selectSection('${k}')">${esc(label)}</button>`;
   }).join('');
   html+=`<button class="tab-add" onclick="openNewSectionSheet()" title="セクションを追加">
     <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
@@ -1047,6 +1128,7 @@ function renderTabs(){
     el.addEventListener('mouseup',cancel);
     el.addEventListener('mouseleave',cancel);
   });
+  refreshSectionReorderButtons();
 }
 
 // RENDER LIST
